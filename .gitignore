@@ -1,0 +1,12 @@
+# Cartella di output standard di Maven
+/target/
+
+# Log
+*.log
+
+# File specifici del tuo IDE (VS Code)
+.vscode/
+
+# --- SICUREZZA ---
+# Ignora il file con le credenziali del database (MOLTO IMPORTANTE)
+**/Config.java
