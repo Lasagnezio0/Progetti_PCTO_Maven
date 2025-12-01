@@ -192,7 +192,7 @@ public class Main {
             pstmtDomicilio.setInt(2, numero_domicilio);
             pstmtDomicilio.executeUpdate();
 
-            // Recupera l'id
+            // Recupera l'id, dal primo campo
             rs = pstmtDomicilio.getGeneratedKeys();
             if (rs.next()) {
                 domicilioId = rs.getInt(1);
@@ -221,6 +221,7 @@ public class Main {
             pstmt.setInt(4, residenzaId);
             pstmt.setInt(5, domicilioId);
 
+            //per il check dopo, se almeno una riga è stata aggiornata
             int righeAggiornate = pstmt.executeUpdate();
 
             // Se tutto è andato bene, conferma le modifiche
