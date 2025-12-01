@@ -6,7 +6,6 @@ import java.sql.SQLException;
 import java.util.Scanner;
 import java.sql.ResultSet;
 import java.sql.Statement;
-import java.sql.DriverManager;
 
 public class Main {
 
@@ -308,7 +307,7 @@ public class Main {
                 case 3:
                     System.out.print("Nuovo Luogo di Nascita: ");
                     nuovoLuogoDiNascita = scn.nextLine();
-                    return aggiornaSingoloCampo(idStudente, "LuogoDiNascita", nuovoLuogoDiNascita);
+                    return aggiornaSingoloCampo(idStudente, "luogo_di_nascita", nuovoLuogoDiNascita);
 
                 case 4:
                     // Modifica tutto il record
