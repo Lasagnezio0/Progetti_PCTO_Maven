@@ -18,6 +18,8 @@ public class Main {
             System.out.println("\n--- MENU GESTIONE Database---");
             System.out.println("1. Test Connessione Database");
             System.out.println("2. Inserisci nuovo Studente");
+            System.out.println("3. Modifica uno Studente");
+            System.out.println("4. Elimina uno Studente");
             System.out.println("0. Esci");
             System.out.print("Scegli un'opzione: ");
             
@@ -95,9 +97,9 @@ public class Main {
         String via_residenza = pezzi[0];
         int numero_residenza =  Integer.parseInt(pezzi[1]);*/
 
-        System.out.println("Inserisci la via di residenza(solo via): ");
+        System.out.print("Inserisci la via di residenza(solo via): ");
         String via_residenza = scn.nextLine().trim(); 
-        System.out.println("Inserisci il numero civico di residenza:  ");
+        System.out.print("Inserisci il numero civico di residenza:  ");
         
         int numero_residenza = 0;
         if (scn.hasNextInt()) {
@@ -111,9 +113,9 @@ public class Main {
 
 
         //stessa cosa di via di residenza ma con via di domicilio 
-        System.out.println("Inserisci ora la via di domicilio(solo via) ");
+        System.out.print("Inserisci ora la via di domicilio(solo via) ");
         String via_domicilio = scn.nextLine().trim(); 
-        System.out.println("Inserisci il numero civico di domicilio:  ");
+        System.out.print("Inserisci il numero civico di domicilio:  ");
         
         int numero_domicilio = 0;
         if (scn.hasNextInt()) {
