@@ -2,10 +2,11 @@ package com.cineca.app;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Scanner;
+import java.sql.ResultSet;
 import java.sql.Statement;
+import java.sql.DriverManager;
 
 public class Main {
 
@@ -47,7 +48,12 @@ public class Main {
                     }
                     break;
                 case 3:
-                    modificastudente(scanner);
+                    boolean riuscitaModifica = modificastudente(scanner);
+                    if (riuscitaModifica) {
+                        System.out.println("Studente modificato con successo");
+                    } else {
+                        System.out.println("c'è stato un errore durante la modifica dello studente");
+                    }
                     break;
                 case 4:
                     boolean riuscitaElimina = eliminaStudente(scanner);
@@ -56,6 +62,7 @@ public class Main {
                     } else {
                         System.out.println("c'è stato un errore durante la eliminazione dello studente");
                     }
+                    
                     break;
                 case 5:
                     stampaStudentiConIndirizzi();
@@ -236,31 +243,11 @@ public class Main {
 
         } finally {
             // chiusura di tutte le risorse in modo esplicito
-            if (rs != null)
-                try {
-                    rs.close();
-                } catch (SQLException e) {
-                }
-            if (pstmtResidenza != null)
-                try {
-                    pstmtResidenza.close();
-                } catch (SQLException e) {
-                }
-            if (pstmtDomicilio != null)
-                try {
-                    pstmtDomicilio.close();
-                } catch (SQLException e) {
-                }
-            if (pstmt != null)
-                try {
-                    pstmt.close();
-                } catch (SQLException e) {
-                }
-            if (conn != null)
-                try {
-                    conn.close();
-                } catch (SQLException e) {
-                }
+            if (rs != null) try {rs.close(); } catch (SQLException e) {}
+            if (pstmtResidenza != null)try {pstmtResidenza.close();} catch (SQLException e) {}
+            if (pstmtDomicilio != null)try {pstmtDomicilio.close();} catch (SQLException e) {}
+            if (pstmt != null)try {pstmt.close();} catch (SQLException e) {}
+            if (conn != null)try {conn.close();} catch (SQLException e) {}
         }
 
     }
@@ -333,15 +320,12 @@ public class Main {
                     nuovoLuogoDiNascita = scn.nextLine();
 
                     return aggiornaTuttoIlRecord(idStudente, nuovoNome, nuovoCognome, nuovoLuogoDiNascita);
-
                 case 5:
                     // Modifica indirizzo
-                    return modificaIndirizzo(scn, idStudente, "residenza_id");
-
+                    return modificaIndirizzo(scn, idStudente,"residenza_id" );
                 case 6:
-                    // Modifica domicilio
-                    return modificaIndirizzo(scn, idStudente, "domicilio_id");
-
+                    return modificaIndirizzo(scn, idStudente,"domicilio_id" );
+ 
                 case 0:
                     System.out.println("Modifica annullata.");
                     break; // Esce dallo switch, il ciclo while terminerà
@@ -404,23 +388,27 @@ public class Main {
             scn.nextLine();
             return false;
         }
+
         Connection conn = null;
         PreparedStatement pstmt = null;
-        
-        // ATTENZIONE: Nomi di colonna 'indirizzo' e 'numero_civico' usati in 'indirizzi'
-        String query = "UPDATE indirizzi SET indirizzo = ?, numero_civico = ? WHERE id = (SELECT " + tipoIndirizzo + " FROM studenti WHERE id = ?)";
-        
+
+        String query = "UPDATE indirizzi SET via = ?, numero = ? WHERE id = (SELECT " + tipoIndirizzo + " FROM studenti WHERE id = ?)";
+
         try {
             conn = DatabaseManager.ottieniConnessione();
             pstmt = conn.prepareStatement(query);
+
             pstmt.setString(1, indirizzo);
             pstmt.setInt(2, numero);
             pstmt.setInt(3, idStudente);
+
             int righeModificate = pstmt.executeUpdate();
             return righeModificate > 0;
+
         } catch (SQLException e) {
             System.err.println("Errore DB: " + e.getMessage());
             return false;
+
         } finally {
             if (pstmt != null) try { pstmt.close(); } catch (SQLException e) { }
             if (conn != null) try { conn.close(); } catch (SQLException e) { }
