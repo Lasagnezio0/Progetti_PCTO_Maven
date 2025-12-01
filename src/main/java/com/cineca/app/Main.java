@@ -21,6 +21,7 @@ public class Main {
             // Controllo input per evitare crash se l'utente inserisce lettere
             if (scanner.hasNextInt()) {
                 scelta = scanner.nextInt();
+                scanner.nextLine();
             } else {
                 scanner.next(); // consuma input non valido
                 scelta = -1;
@@ -31,7 +32,22 @@ public class Main {
                     testConnessione();
                     break;
                 case 2:
-                    inserisciStudente(scanner);
+                    boolean riuscita = inserisciStudente(scanner);
+                    if(riuscita){
+                        System.out.println("Studente aggiunto :D ");
+                    }else{
+                        System.out.println("Errore durante l'aggiunta dello studente :C");
+                    }
+                    break;
+
+                case 4:
+                    boolean riuscitaElimina = eliminaStudente(scanner);
+                    if(riuscitaElimina){
+                        System.out.println("Studente eliminato con successo");
+                    }else{
+                        System.out.println("c'è stato un errore durante la eliminazione dello studente");
+                    }
+                    
                     break;
                 case 0:
                     System.out.println("Uscita in corso...");
@@ -84,5 +100,30 @@ public class Main {
             if (conn != null) try { conn.close(); } catch (SQLException e) { }
         }
 
+    }
+
+    private static boolean eliminaStudente(Scanner scn){
+        System.out.println("Inserisci l'ID univoco dello studente da eliminare;");
+        int scelta = scn.nextInt();
+        scn.nextLine();
+
+        Connection conn = null;
+        PreparedStatement pstmt = null;
+        String query = "DELETE FROM studenti WHERE id = ?";
+
+        try{
+            conn = DatabaseManager.ottieniConnessione();
+            pstmt = conn.prepareStatement(query);
+
+            pstmt.setInt(1, scelta);
+            return pstmt.executeUpdate() > 0;
+
+        }catch(SQLException e){
+            System.out.println("Errore nel db: "  + e.getMessage());
+            return false;
+        }finally{
+            if (pstmt != null) try { pstmt.close(); } catch (SQLException e) { }
+            if (conn != null) try { conn.close(); } catch (SQLException e) { }
+        }
     }
 }
