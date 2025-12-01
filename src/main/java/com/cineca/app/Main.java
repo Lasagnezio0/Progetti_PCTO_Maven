@@ -2,8 +2,10 @@ package com.cineca.app;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Scanner;
+import java.sql.Statement;
 
 public class Main {
 
@@ -41,7 +43,9 @@ public class Main {
                         System.out.println("Errore durante l'aggiunta dello studente :C");
                     }
                     break;
-
+                case 3:
+                    modificastudente(scanner);
+                    break;
                 case 4:
                     boolean riuscitaElimina = eliminaStudente(scanner);
                     if(riuscitaElimina){
@@ -49,7 +53,6 @@ public class Main {
                     }else{
                         System.out.println("c'è stato un errore durante la eliminazione dello studente");
                     }
-                    
                     break;
                 case 0:
                     System.out.println("Uscita in corso...");
@@ -71,6 +74,7 @@ public class Main {
         }
     }
 
+    //INSERIMENTO STUDENTE
     private static boolean inserisciStudente(Scanner scn) {
         //inizio input dati utente per la creazione di un nuovo studente
         System.out.print("Inserisci il nome dello studente: ");
@@ -82,54 +86,150 @@ public class Main {
         System.out.print("Inserisci il luogo di nascita dello studente: ");
         String LuogoDiNascita = scn.nextLine();
 
-        //regex per dividere 
+        /*regex per dividere 
         String regex = "\\s+\\d+ ";
         System.out.println("Inserisci la via di residenza(formato: via numero): ");
-        //togliamo spazi iniziali e finali
+        togliamo spazi iniziali e finali
         String tmp = scn.nextLine().trim(); 
         String[] pezzi = tmp.split(regex);
         String via_residenza = pezzi[0];
-        int numero_residenza =  Integer.parseInt(pezzi[1]);
-        
+        int numero_residenza =  Integer.parseInt(pezzi[1]);*/
 
+        System.out.println("Inserisci la via di residenza(solo via): ");
+        String via_residenza = scn.nextLine().trim(); 
+        System.out.println("Inserisci il numero civico di residenza:  ");
         
+        int numero_residenza = 0;
+        if (scn.hasNextInt()) {
+            numero_residenza = scn.nextInt();
+            scn.nextLine();
+        } else {
+            scn.nextLine();
+            System.out.println("Opzione non valida, riprova.");
+            return false;
+        }
+
+
         //stessa cosa di via di residenza ma con via di domicilio 
-        System.out.println("Inserisci ora la via di domicilio(formato: via numero): ");
-        tmp = scn.nextLine().trim(); 
-        pezzi = tmp.split(regex);
-        String via_domicilio = pezzi[0];
-        int numero_domicilio =  Integer.parseInt(pezzi[1]);
+        System.out.println("Inserisci ora la via di domicilio(solo via) ");
+        String via_domicilio = scn.nextLine().trim(); 
+        System.out.println("Inserisci il numero civico di domicilio:  ");
+        
+        int numero_domicilio = 0;
+        if (scn.hasNextInt()) {
+            numero_domicilio = scn.nextInt();
+            scn.nextLine();
+        } else {
+            scn.nextLine();
+            System.out.println("Opzione non valida, riprova.");
+            return false;
+        }
 
         //istanziamo le varie variabili uguali a null
         Connection conn = null;
         PreparedStatement pstmt = null;
+        PreparedStatement pstmtResidenza = null;
+        PreparedStatement pstmtDomicilio = null;
+        ResultSet rs = null; 
+        int residenzaId = -1; 
+        int domicilioId = -1;
 
         //query con placeholder a ? per non fare escape con apici per sqli
-        String query = "INSERT INTO studenti (nome, cognome, LuogoDiNascita) VALUES (?, ?, ?)";
+        String queryIndirizzo = "INSERT INTO indirizzi (indirizzo, numero_civico) VALUES (?, ?)";
+        String queryStudente = "INSERT INTO studenti (nome, cognome, luogo_di_nascita, residenza_id, domicilio_id) VALUES (?, ?, ?,? ,? )";
     
         try {
-            //definizione delle variabili
+            // Prima query: quella di residenza 
             conn = DatabaseManager.ottieniConnessione();
-            pstmt = conn.prepareStatement(query);
+            conn.setAutoCommit(false); // Disattiva l'AutoCommit, serve per non fare fallire più query dipendenti,
+            /*
+            Se il recupero id del domicilio fallisse, ma il Passo 1
+            avesse già salvato l'indirizzo, avresti un database in uno stato inconsistent
+            Se uno qualsiasi dei passi fallisce (catturato dal catch), viene chiamato conn.rollback(), 
+            che cancella automaticamente anche l'indirizzo di residenza e l'indirizzo di domicilio inseriti 
+            in precedenza. L'operazione è annullata completamente.
+            */
+
+            //  Inserimento residenza e recupero id
+
+            //prepara la variabile a ricevere anche le chiavi generate
+            pstmtResidenza = conn.prepareStatement(queryIndirizzo, Statement.RETURN_GENERATED_KEYS);
+            //solito prepared statement
+            pstmtResidenza.setString(1, via_residenza);
+            pstmtResidenza.setInt(2, numero_residenza);
+            pstmtResidenza.executeUpdate();
+
+            // Recupera l'id
+            rs = pstmtResidenza.getGeneratedKeys();
+            if (rs.next()) {
+                //prendiamo il valore della prima colonna, ovvero l'id
+                residenzaId = rs.getInt(1);
+            }
+            if (rs != null) try { rs.close(); } catch (SQLException e) { } // Chiudi subito l'ultimo ResultSet
+
+            //inserimento domicilio e recupero id
+
+            //stessa cosa come con la residenza ma con invece, domicilio
+            pstmtDomicilio = conn.prepareStatement(queryIndirizzo, Statement.RETURN_GENERATED_KEYS);
+            pstmtDomicilio.setString(1, via_domicilio);
+            pstmtDomicilio.setInt(2, numero_domicilio);
+            pstmtDomicilio.executeUpdate();
+
+            // Recupera l'id
+            rs = pstmtDomicilio.getGeneratedKeys();
+            if (rs.next()) {
+                domicilioId = rs.getInt(1);
+            }
+
+            if (rs != null) try { rs.close(); } catch (SQLException e) { } // Chiudi subito l'ultimo ResultSet
+
+            // Controlla che entrambi gli ID siano stati recuperati, altrimenti esce
+            if (residenzaId == -1 || domicilioId == -1) {
+                throw new SQLException("Errore: Impossibile recuperare gli ID di residenza/domicilio.");
+            }
+
+            //inserimento studente
+            pstmt = conn.prepareStatement(queryStudente);
             
-            //dati nelle prepared statement sostituiti
+            // Dati studente
             pstmt.setString(1, nome);
             pstmt.setString(2, cognome);
             pstmt.setString(3, LuogoDiNascita);
             
-            return pstmt.executeUpdate() > 0; // Ritorna true se inserita 1+ riga
+            // Chiavi Esterne prese gentilmente dalle query di prima
+            pstmt.setInt(4, residenzaId); 
+            pstmt.setInt(5, domicilioId); 
+            
+            int righeAggiornate = pstmt.executeUpdate();
+            
+            // Se tutto è andato bene, conferma le modifiche
+            conn.commit(); 
+            return righeAggiornate > 0; 
             
         } catch (SQLException e) {
             System.err.println("Errore DB: " + e.getMessage());
+            
+            if (conn != null) {
+                try {
+                    conn.rollback(); // Nel caso qualcosa vada storto, annulla tutto
+                    System.err.println("Transazione annullat.");
+                } catch (SQLException ee) {
+                    System.err.println("Rollback fallito: " + ee.getMessage());
+                }
+            }
             return false;
             
         } finally {
-            //chiudiamo le connessioni
+            // chiusura di  tutte le risorse in modo esplicito
+            if (rs != null) try { rs.close(); } catch (SQLException e) { }
+            if (pstmtResidenza != null) try { pstmtResidenza.close(); } catch (SQLException e) { }
+            if (pstmtDomicilio != null) try { pstmtDomicilio.close(); } catch (SQLException e) { }
             if (pstmt != null) try { pstmt.close(); } catch (SQLException e) { }
             if (conn != null) try { conn.close(); } catch (SQLException e) { }
         }
 
     }
+    
     // MODIFICA STUDENTE
     private static boolean modificastudente(Scanner scn) {
         System.out.println("Benvenuto nella modifica dello studente");
@@ -268,6 +368,8 @@ public class Main {
             if (conn != null) try { conn.close(); } catch (SQLException e) { }
         }
     }
+    
+    //ELIMINA STUDENTE
     private static boolean eliminaStudente(Scanner scn){
         //campo di input
         System.out.println("Inserisci l'ID univoco dello studente da eliminare;");
