@@ -1,13 +1,10 @@
-package com.cineca.app.frontend;
+    package com.cineca.app.frontend;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
-
-import com.cineca.app.backend.DatabaseManager;
 import com.cineca.app.backend.StudentDAO; // Import aggiunto per DAO
 
 import java.awt.*;
-import java.sql.*;
 import java.util.Vector;
 
 public class MainFrame extends JFrame {
@@ -99,12 +96,13 @@ public class MainFrame extends JFrame {
         stampaStudentiConIndirizzi();
     }
 
+    
     private void testConnessione() {
-        // La logica di test connessione rimane qui
-        try (Connection conn = DatabaseManager.ottieniConnessione()) {
+        boolean ok = StudentDAO.testConnessioneDB();
+        if(ok){
             JOptionPane.showMessageDialog(this, "Connessione OK!");
-        } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this, "Errore: " + e.getMessage());
+        } else {
+            JOptionPane.showMessageDialog(this, "Errore di connessione al DB.");
         }
     }
 
@@ -280,6 +278,6 @@ public class MainFrame extends JFrame {
         }
     }
     
-    // da questa classe (MainFrame) perché la loro logica (JDBC/SQL/Transazioni) 
+    // da questa classe (MainFrame) perché la loro logica (JDBC/SQL) 
     // è stata spostata interamente in StudentDAO per una corretta architettura.
 }

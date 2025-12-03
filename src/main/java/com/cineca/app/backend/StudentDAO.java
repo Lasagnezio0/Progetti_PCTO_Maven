@@ -19,6 +19,17 @@ public class StudentDAO {
         throw new SQLException("Fallimento creazione indirizzo");
     }
 
+    // Metodo spostato da MainFrame: Esegue un test di connessione al database.
+    public static boolean testConnessioneDB() {
+        try (Connection conn = DatabaseManager.ottieniConnessione()) {
+            return true;
+        } catch (SQLException e) {
+            // Stampiamo l'errore qui, ma la gestione del messaggio JOptionPane avviene nella GUI.
+            System.err.println("Errore di connessione al DB: " + e.getMessage());
+            return false;
+        }
+    }
+
     //Recupera tutti gli studenti (incluso ID e dati indirizzi separati per la modifica)
     public static Vector<Vector<Object>> ottieniTuttiStudentiCompleti() {
         Vector<Vector<Object>> data = new Vector<>();
@@ -132,9 +143,6 @@ public class StudentDAO {
 
     // Elimina studente
     public static boolean eliminaStudente(int idStudente) {
-        // Nota: Se hai FK con ON DELETE CASCADE nel DB, basta cancellare lo studente.
-        // Se non lo hai, dovresti cancellare anche gli indirizzi. 
-        // Per semplicità qui cancelliamo lo studente (assumendo DB ben configurato o solo soft logic).
         String query = "DELETE FROM studenti WHERE id = ?";
         try (Connection conn = DatabaseManager.ottieniConnessione();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
