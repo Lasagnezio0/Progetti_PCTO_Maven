@@ -1,30 +1,54 @@
-    package com.cineca.app.frontend;
+//1. mettere anche gli esami, quando scelgo uno studente e lo seleziono, sotto appaiono gli esami 👌👍
+//strato service necessario per fre da interfaccia con il mondo esterno 👌👍
+
+
+//3 DAO differenti per ogni tabella, non una sola per tute e 3, ed il service che le usa tutte e 3 e decide di fare commit e rollback, non piu le classi DAO👌👍
+//magari un dao chiama un altro DAO anche se serve 👌👍
+
+//fare una classe ADAO   
+    //costruttore parametro connection
+    //tutti e 3 i dao devono implementare interfaccia comune
+
+    //factory dei DAO --> Puoi centralizzare la creazione di DAO 
+    //nei service esponiamo i DAO, che faranno la connessione tramite la factory, ed il service fa dao o rollback
+    //miglioreremo il progetto poi verso springboot, modificando la parte backend, facendola diventare un servizio RESTful
+    //al posto di swing poi siutilizza php oppure angular o react per fare il frontend
+    //progettarla come una API, service(meglio farlo in springboot), fare da DOPO
+
+
+package com.cineca.app.frontend;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
-import com.cineca.app.backend.StudentDAO; // Import aggiunto per DAO
+
+import com.cineca.app.backend.service.GestioneStudentiService;
 
 import java.awt.*;
 import java.util.Vector;
+import java.util.List; 
 
 public class MainFrame extends JFrame {
 
-    //variabili di JFRAME
-    private JTable tabellaStudenti;
-    private DefaultTableModel modelloTabella;
-    private JButton btnTestConn, btnInserisci, btnModifica, btnElimina, btnAggiorna;
+    // VARIABILE FONDAMENTALE: Lo strato Service
+    private GestioneStudentiService service;
 
-    
+    // Variabili GUI
+    private JTable tabellaStudenti, tblEsami;
+    private DefaultTableModel modelloTabella, modelEsami;
+    private JButton btnTestConn, btnInserisci, btnModifica, btnElimina, btnAggiorna, btnModificaEsame, btnAggiungiEsame;
 
     public MainFrame() {
+        // 1. INIZIALIZZAZIONE SERVICE
+        service = new GestioneStudentiService();
+
         // Impostazioni base JFrame
-        setTitle("Gestione Studenti Database");
-        setSize(1000, 600); // Un po' più larga per vedere bene
+        setTitle("Gestione Studenti - Architettura Service Layer");
+        setSize(1100, 650); 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
-        // Aggiungiamo colonne "nascoste" per avere i dati pronti per la modifica
+        // --- SETUP MODELLI TABELLE ---
         String[] colonne = {
             "ID",                   // 0: ID Studente (Nascosto)
             "Nome",                 // 1
@@ -39,66 +63,94 @@ public class MainFrame extends JFrame {
             "Via_Dom",              // 10: Nascosto
             "Civ_Dom"               // 11: Nascosto
         };
+
+        String[] colEsami = { "ID", "Materia", "Voto", "Data", "Sostenuto" };
         
-        //classe anonima, qui creiamo la tabella data la classe padre e poi override il metodo isCellEditable
-        //per evitare che l'utente possa modificare i campi direttamente dall GUI
         modelloTabella = new DefaultTableModel(colonne, 0) {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
+            @Override public boolean isCellEditable(int row, int column) { return false; }
         };
-        
-        //tabella creata a riga 16 definita
+
+        modelEsami = new DefaultTableModel(colEsami, 0) {
+            @Override public boolean isCellEditable(int row, int column) { return false; }
+        };
+       
         tabellaStudenti = new JTable(modelloTabella);
+        tblEsami = new JTable(modelEsami);
         
-        // Nascondiamo le colonne tecniche (ID e i dati grezzi degli indirizzi)
-        // L'utente vede solo fino alla colonna 5, ovvero Domicilio
-        tabellaStudenti.removeColumn(tabellaStudenti.getColumnModel().getColumn(11)); // Civ Dom
-        tabellaStudenti.removeColumn(tabellaStudenti.getColumnModel().getColumn(10)); // Via Dom
-        tabellaStudenti.removeColumn(tabellaStudenti.getColumnModel().getColumn(9));  // ID Dom
-        tabellaStudenti.removeColumn(tabellaStudenti.getColumnModel().getColumn(8));  // Civ Res
-        tabellaStudenti.removeColumn(tabellaStudenti.getColumnModel().getColumn(7));  // Via Res
-        tabellaStudenti.removeColumn(tabellaStudenti.getColumnModel().getColumn(6));  // ID Res
-        tabellaStudenti.removeColumn(tabellaStudenti.getColumnModel().getColumn(0));  // ID Studente
+        // Nascondiamo le colonne tecniche
+        nascondiColonna(tabellaStudenti, 11); // Civ Dom
+        nascondiColonna(tabellaStudenti, 10); // Via Dom
+        nascondiColonna(tabellaStudenti, 9);  // ID Dom
+        nascondiColonna(tabellaStudenti, 8);  // Civ Res
+        nascondiColonna(tabellaStudenti, 7);  // Via Res
+        nascondiColonna(tabellaStudenti, 6);  // ID Res
+        nascondiColonna(tabellaStudenti, 0);  // ID Studente
         
-        //fa apparire la scrollbar se i dati superano lo spazio della tabella
+        // Layout Tabelle
         add(new JScrollPane(tabellaStudenti), BorderLayout.CENTER);
+        
+        JPanel panelEsamiContainer = new JPanel(new BorderLayout());
+        panelEsamiContainer.add(new JLabel("Lista Esami dello Studente Selezionato"), BorderLayout.NORTH);
+        panelEsamiContainer.add(new JScrollPane(tblEsami), BorderLayout.CENTER);
+        panelEsamiContainer.setPreferredSize(new Dimension(400, 0)); 
+        add(panelEsamiContainer, BorderLayout.EAST);
 
-
+        // --- SETUP BOTTONI ---
         JPanel pannelloBottoni = new JPanel();
-
-        //definiamo i pulsanti istanziati a riga 17
-        btnTestConn = new JButton("Test Connessione");
-        btnInserisci = new JButton("Inserisci Studente");
-        btnModifica = new JButton("Modifica Completa");
+        btnTestConn = new JButton("Test DB");
+        btnInserisci = new JButton("Nuovo Studente");
+        btnModifica = new JButton("Modifica Studente");
         btnElimina = new JButton("Elimina Studente");
-        btnAggiorna = new JButton("Aggiorna Tabella");
+        btnAggiorna = new JButton("Aggiorna Liste");
+        
+        btnAggiungiEsame = new JButton("Nuovo Esame");
+        btnModificaEsame = new JButton("Modifica Esame");
 
-        //li aggiungiamo direttametnte al pannello
         pannelloBottoni.add(btnTestConn);
         pannelloBottoni.add(btnInserisci);
         pannelloBottoni.add(btnModifica);
         pannelloBottoni.add(btnElimina);
         pannelloBottoni.add(btnAggiorna);
+        pannelloBottoni.add(new JSeparator(SwingConstants.VERTICAL));
+        pannelloBottoni.add(btnAggiungiEsame);
+        pannelloBottoni.add(btnModificaEsame);
 
-        //aggiungiamo il pannnello dei bottomi al frame
         add(pannelloBottoni, BorderLayout.SOUTH);
 
-        //Aggiungiamo ad ogni pulsante un event listener come in javascript
+        // --- LISTENER ---
+        
+        // Listener Tabella: quando seleziono studente, chiedo al service gli esami
+        tabellaStudenti.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                caricaEsamiStudente();
+            }
+        });
+
+        // Listener Bottoni -> Chiamano metodi privati che usano il SERVICE
         btnTestConn.addActionListener(e -> testConnessione());
         btnInserisci.addActionListener(e -> inserisciStudenteGUI());
         btnModifica.addActionListener(e -> modificaStudenteGUI());
         btnElimina.addActionListener(e -> eliminaStudenteGUI());
         btnAggiorna.addActionListener(e -> stampaStudentiConIndirizzi());
+        btnAggiungiEsame.addActionListener(e -> aggiungiEsameAction());
+        btnModificaEsame.addActionListener(e -> modificaEsameGUI());
 
-        //stampa la tabella in ogni caso
+        // Caricamento iniziale
         stampaStudentiConIndirizzi();
     }
 
-    
+    // Helper per nascondere colonne in modo pulito
+    private void nascondiColonna(JTable table, int index) {
+        table.removeColumn(table.getColumnModel().getColumn(index));
+    }
+
+    // =================================================================================
+    // METODI LOGICI (TUTTI RIFATTI PER USARE IL SERVICE INVECE DEI DAO)
+    // =================================================================================
+
     private void testConnessione() {
-        boolean ok = StudentDAO.testConnessioneDB();
+        // USIAMO IL SERVICE
+        boolean ok = service.checkConnessione();
         if(ok){
             JOptionPane.showMessageDialog(this, "Connessione OK!");
         } else {
@@ -106,20 +158,24 @@ public class MainFrame extends JFrame {
         }
     }
 
+    public void stampaStudentiConIndirizzi() {
+        modelloTabella.setRowCount(0);
+        // USIAMO IL SERVICE: Non sappiamo come prende i dati, ci fidiamo
+        Vector<Vector<Object>> datiStudenti = service.ottieniListaStudenti();
+
+        for (Vector<Object> riga : datiStudenti) {
+            modelloTabella.addRow(riga);
+        }
+    }
+
     private void inserisciStudenteGUI() {
-        // Form di inserimento
         JPanel panel = new JPanel(new GridLayout(0, 2));
 
-        //campo di input per ogni field
-        JTextField txtNome = new JTextField();
-        JTextField txtCognome = new JTextField();
-        JTextField txtLuogo = new JTextField();
-        JTextField txtViaRes = new JTextField();
-        JTextField txtNumRes = new JTextField();
-        JTextField txtViaDom = new JTextField();
+        JTextField txtNome = new JTextField(); JTextField txtCognome = new JTextField();
+        JTextField txtLuogo = new JTextField(); JTextField txtViaRes = new JTextField();
+        JTextField txtNumRes = new JTextField(); JTextField txtViaDom = new JTextField();
         JTextField txtNumDom = new JTextField();
 
-        //aggiunge prima il label, poi il campo di input al pannello
         panel.add(new JLabel("Nome:")); panel.add(txtNome);
         panel.add(new JLabel("Cognome:")); panel.add(txtCognome);
         panel.add(new JLabel("Luogo Nascita:")); panel.add(txtLuogo);
@@ -130,27 +186,24 @@ public class MainFrame extends JFrame {
         panel.add(new JLabel("Via:")); panel.add(txtViaDom);
         panel.add(new JLabel("Civico:")); panel.add(txtNumDom);
 
-        //guardiamo il risultato del popup, showConfirmDialog ritorna OK o CANCEL, dal pannello, ultimo parametro serve per
-        //mettere i pulsanti OK e CANCEL
         int result = JOptionPane.showConfirmDialog(this, panel, "Nuovo Studente", JOptionPane.OK_CANCEL_OPTION);
 
-        //guardiamo se dal popup l'utente ha premuto OK
         if (result == JOptionPane.OK_OPTION) {
             try {
-                //conversione da stringa campo di input a intero
                 int numRes = Integer.parseInt(txtNumRes.getText());
                 int numDom = Integer.parseInt(txtNumDom.getText());
                 
-                // CAMBIAMENTO: Chiama il DAO per eseguire l'inserimento e la transazione
-                boolean ok = StudentDAO.inserisciStudente(txtNome.getText(), txtCognome.getText(), txtLuogo.getText(), 
-                                                                    txtViaRes.getText(), numRes, txtViaDom.getText(), numDom);
+                // USIAMO IL SERVICE: Gestisce lui la transazione complessa
+                boolean ok = service.inserisciStudenteCompleto(
+                    txtNome.getText(), txtCognome.getText(), txtLuogo.getText(), 
+                    txtViaRes.getText(), numRes, txtViaDom.getText(), numDom
+                );
                 
                 if (ok) {
-                    //stampa sto messagguo solo se inserimento andato a buon fine
                     JOptionPane.showMessageDialog(this, "Inserito con successo!");
                     stampaStudentiConIndirizzi();
                 } else {
-                    JOptionPane.showMessageDialog(this, "Errore durante l'inserimento nel DB (Transazione Fallita).");
+                    JOptionPane.showMessageDialog(this, "Errore durante l'inserimento (Transazione Rollback).");
                 }
             } catch (NumberFormatException ex) {
                 JOptionPane.showMessageDialog(this, "I civici devono essere numeri!");
@@ -158,53 +211,33 @@ public class MainFrame extends JFrame {
         }
     }
 
-    // NUOVA FUNZIONE MODIFICA COMPLETA
     private void modificaStudenteGUI() {
-
-        //prende la riga selezionata dall'utente
         int rigaSelezionata = tabellaStudenti.getSelectedRow();
-
-        //se non ne seleziona nessuna, mostra sto messaggio
         if (rigaSelezionata == -1) {
             JOptionPane.showMessageDialog(this, "Seleziona uno studente!");
             return;
         }
 
-        //la table è formata da parte utente e parte modello, convertiamo quindi l'intero della parte utente nell
-        //intero assoluto del modello dove ci sono i dati
+        // Convertire indice View -> Indice Model
         int modelRow = tabellaStudenti.convertRowIndexToModel(rigaSelezionata);
 
-        // Recuperiamo TUTTI i dati (anche quelli nascosti)
-        // La logica di recupero dati dalla GUI rimane qui
-        //recupero id univoco
-        int idStudente = (int) modelloTabella.getValueAt(modelRow, 0);
-        
-        // Dati Anagrafici
+        // Recupero dati attuali dal modello
+        int idStudente = Integer.parseInt(modelloTabella.getValueAt(modelRow, 0).toString());
         String nome = (String) modelloTabella.getValueAt(modelRow, 1);
         String cognome = (String) modelloTabella.getValueAt(modelRow, 2);
         String luogo = (String) modelloTabella.getValueAt(modelRow, 3);
-        
-        // Dati Residenza (Nascosti)
         int idRes = (int) modelloTabella.getValueAt(modelRow, 6);
         String viaRes = (String) modelloTabella.getValueAt(modelRow, 7);
         int civRes = (int) modelloTabella.getValueAt(modelRow, 8);
-        
-        // Dati Domicilio (Nascosti)
         int idDom = (int) modelloTabella.getValueAt(modelRow, 9);
         String viaDom = (String) modelloTabella.getValueAt(modelRow, 10);
         int civDom = (int) modelloTabella.getValueAt(modelRow, 11);
 
-        // Creiamo il Form pre-compilato
+        // Form
         JPanel panel = new JPanel(new GridLayout(0, 2));
-
-        JTextField txtNome = new JTextField(nome);
-        JTextField txtCognome = new JTextField(cognome);
-        JTextField txtLuogo = new JTextField(luogo);
-        
-        JTextField txtViaRes = new JTextField(viaRes);
-        JTextField txtCivRes = new JTextField(String.valueOf(civRes));
-        
-        JTextField txtViaDom = new JTextField(viaDom);
+        JTextField txtNome = new JTextField(nome); JTextField txtCognome = new JTextField(cognome);
+        JTextField txtLuogo = new JTextField(luogo); JTextField txtViaRes = new JTextField(viaRes);
+        JTextField txtCivRes = new JTextField(String.valueOf(civRes)); JTextField txtViaDom = new JTextField(viaDom);
         JTextField txtCivDom = new JTextField(String.valueOf(civDom));
 
         panel.add(new JLabel("Nome:")); panel.add(txtNome);
@@ -217,25 +250,25 @@ public class MainFrame extends JFrame {
         panel.add(new JLabel("Via:")); panel.add(txtViaDom);
         panel.add(new JLabel("Civico:")); panel.add(txtCivDom);
 
-        //crea il popup e salva la scelta dell'utente
-        int result = JOptionPane.showConfirmDialog(this, panel, "Modifica Studente e Indirizzi", JOptionPane.OK_CANCEL_OPTION);
+        int result = JOptionPane.showConfirmDialog(this, panel, "Modifica Studente", JOptionPane.OK_CANCEL_OPTION);
 
         if (result == JOptionPane.OK_OPTION) {
             try {
                 int newCivRes = Integer.parseInt(txtCivRes.getText());
                 int newCivDom = Integer.parseInt(txtCivDom.getText());
 
-                // CAMBIAMENTO: Chiama il DAO per eseguire la modifica transazionale (3 UPDATE)
-                boolean ok = StudentDAO.eseguiModificaCompleta(idStudente, idRes, idDom, 
-                                            txtNome.getText(), txtCognome.getText(), txtLuogo.getText(),
-                                            txtViaRes.getText(), newCivRes,
-                                            txtViaDom.getText(), newCivDom);
+                // USIAMO IL SERVICE: Aggiorna 3 tabelle in una volta sola
+                boolean ok = service.aggiornaStudenteCompleto(
+                    idStudente, idRes, idDom, 
+                    txtNome.getText(), txtCognome.getText(), txtLuogo.getText(),
+                    txtViaRes.getText(), newCivRes, txtViaDom.getText(), newCivDom
+                );
+
                 if (ok) {
-                    //se la query va a buon fine
-                    JOptionPane.showMessageDialog(this, "Modifica effettuata!");
+                    JOptionPane.showMessageDialog(this, "Modifica avvenuta con successo!");
                     stampaStudentiConIndirizzi();
                 } else {
-                    JOptionPane.showMessageDialog(this, "Errore nella modifica DB (Transazione Fallita).");
+                    JOptionPane.showMessageDialog(this, "Errore durante la modifica.");
                 }
             } catch (NumberFormatException ex) {
                 JOptionPane.showMessageDialog(this, "Errore: I civici devono essere numeri.");
@@ -245,19 +278,22 @@ public class MainFrame extends JFrame {
 
     private void eliminaStudenteGUI() {
         int riga = tabellaStudenti.getSelectedRow();
-        if (riga == -1) return;
+        if (riga == -1) {
+            JOptionPane.showMessageDialog(this, "Seleziona uno studente da eliminare.");
+            return;
+        }
         
         int modelRow = tabellaStudenti.convertRowIndexToModel(riga);
-        int id = (int) modelloTabella.getValueAt(modelRow, 0);
+        int id = Integer.parseInt(modelloTabella.getValueAt(modelRow, 0).toString());
 
-        //guarda se l'utente nella pagina creata con pulsannti YES_NO_OPTION ha premuto YES
-        if (JOptionPane.showConfirmDialog(this, "Eliminare?", "Conferma", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
+        if (JOptionPane.showConfirmDialog(this, "Eliminare definitivamente?", "Conferma", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
             
-            // CAMBIAMENTO: Chiama il DAO per eseguire la DELETE
-            boolean ok = StudentDAO.eliminaStudente(id);
+            // USIAMO IL SERVICE: Elimina prima esami, poi studente (gestione FK)
+            boolean ok = service.eliminaStudente(id);
             
             if (ok) {
                 stampaStudentiConIndirizzi();
+                modelEsami.setRowCount(0); // Pulisce tabella esami
                 JOptionPane.showMessageDialog(this, "Eliminato.");
             } else {
                 JOptionPane.showMessageDialog(this, "Errore durante l'eliminazione.");
@@ -265,19 +301,101 @@ public class MainFrame extends JFrame {
         }
     }
 
+    private void caricaEsamiStudente() {
+        int rigaSelezionata = tabellaStudenti.getSelectedRow();
+        if (rigaSelezionata == -1) { modelEsami.setRowCount(0); return; }
 
-    public void stampaStudentiConIndirizzi() {
-        modelloTabella.setRowCount(0);
-        // Recuperiamo tutti i dati necessari per la tabella e per la modifica futura
-        
-        // CAMBIAMENTO: Chiama il DAO per ottenere tutti i dati già pre-elaborati
-        Vector<Vector<Object>> datiStudenti = StudentDAO.ottieniTuttiStudentiCompleti();
+        int modelRow = tabellaStudenti.convertRowIndexToModel(rigaSelezionata);
+        int idStudente = Integer.parseInt(modelloTabella.getValueAt(modelRow, 0).toString());
 
-        for (Vector<Object> riga : datiStudenti) {
-            modelloTabella.addRow(riga);
+        modelEsami.setRowCount(0);
+
+        // USIAMO IL SERVICE: Ottiene lista esami
+        List<Object[]> listaEsami = service.getEsamiStudente(idStudente);
+
+        for (Object[] esame : listaEsami) {
+            // esame[] = {id, materia, voto, data, sostenuto}
+            boolean isSostenuto = (boolean) esame[4];
+            Object testoVoto = (esame[2] == null) ? "-" : esame[2];
+
+            modelEsami.addRow(new Object[]{
+                esame[0], esame[1], testoVoto, esame[3], (isSostenuto ? "Sì" : "No")
+            });
         }
     }
-    
-    // da questa classe (MainFrame) perché la loro logica (JDBC/SQL) 
-    // è stata spostata interamente in StudentDAO per una corretta architettura.
+
+    private void aggiungiEsameAction() {
+        int rigaStudente = tabellaStudenti.getSelectedRow();
+        if (rigaStudente == -1) {
+            JOptionPane.showMessageDialog(this, "Seleziona uno studente prima!", "Attenzione", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        int modelRow = tabellaStudenti.convertRowIndexToModel(rigaStudente);
+        int idStudente = Integer.parseInt(modelloTabella.getValueAt(modelRow, 0).toString());
+
+        JTextField txtMateria = new JTextField();
+        JTextField txtData = new JTextField("2025-06-15");
+        JCheckBox chkSostenuto = new JCheckBox("Già sostenuto?");
+        JSpinner spnVoto = new JSpinner(new SpinnerNumberModel(18, 0, 30, 1));
+        spnVoto.setEnabled(false);
+        chkSostenuto.addActionListener(e -> spnVoto.setEnabled(chkSostenuto.isSelected()));
+
+        Object[] form = { "Materia:", txtMateria, "Data:", txtData, "Stato:", chkSostenuto, "Voto:", spnVoto };
+
+        if (JOptionPane.showConfirmDialog(this, form, "Nuovo Esame", JOptionPane.OK_CANCEL_OPTION) == JOptionPane.OK_OPTION) {
+            Integer voto = chkSostenuto.isSelected() ? (Integer) spnVoto.getValue() : null;
+            
+            // USIAMO IL SERVICE
+            boolean successo = service.aggiungiEsame(idStudente, txtMateria.getText(), voto, txtData.getText(), chkSostenuto.isSelected());
+
+            if (successo) {
+                JOptionPane.showMessageDialog(this, "Esame aggiunto!");
+                caricaEsamiStudente();
+            } else {
+                JOptionPane.showMessageDialog(this, "Errore inserimento (Data valida?).");
+            }
+        }
+    }
+
+    private void modificaEsameGUI() {
+        int rigaEsame = tblEsami.getSelectedRow();
+        if (rigaEsame == -1) {
+            JOptionPane.showMessageDialog(this, "Seleziona un esame!");
+            return;
+        }
+
+        if (tblEsami.getValueAt(rigaEsame, 4).toString().equalsIgnoreCase("Sì")) {
+            JOptionPane.showMessageDialog(this, "Esame già verbalizzato, non modificabile!", "Stop", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // Recupero dati attuali
+        int idEsame = Integer.parseInt(tblEsami.getValueAt(rigaEsame, 0).toString());
+        String mat = tblEsami.getValueAt(rigaEsame, 1).toString();
+        String dat = tblEsami.getValueAt(rigaEsame, 3).toString();
+
+        JTextField txtMateria = new JTextField(mat);
+        JTextField txtData = new JTextField(dat);
+        JCheckBox chk = new JCheckBox("Verbalizza ora?");
+        JSpinner spnVoto = new JSpinner(new SpinnerNumberModel(18, 0, 30, 1));
+        spnVoto.setEnabled(false);
+        chk.addActionListener(e -> spnVoto.setEnabled(chk.isSelected()));
+
+        Object[] form = { "Materia:", txtMateria, "Data:", txtData, "Stato:", chk, "Voto:", spnVoto };
+
+        if (JOptionPane.showConfirmDialog(this, form, "Modifica Esame", JOptionPane.OK_CANCEL_OPTION) == JOptionPane.OK_OPTION) {
+            Integer voto = chk.isSelected() ? (Integer) spnVoto.getValue() : null;
+
+            // USIAMO IL SERVICE
+            boolean successo = service.aggiornaEsame(idEsame, txtMateria.getText(), txtData.getText(), voto, chk.isSelected());
+
+            if (successo) {
+                JOptionPane.showMessageDialog(this, "Aggiornato!");
+                caricaEsamiStudente();
+            } else {
+                JOptionPane.showMessageDialog(this, "Errore aggiornamento.");
+            }
+        }
+    }    
 }
