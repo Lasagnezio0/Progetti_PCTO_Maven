@@ -2,7 +2,7 @@ package com.cineca.app.frontend;
 
 import javax.swing.SwingUtilities;
 
-import com.cineca.app.backend.DatabaseManager;
+import com.cineca.app.backend.config.DatabaseManager;
 
 public class Main {
     public static void main(String[] args) {
